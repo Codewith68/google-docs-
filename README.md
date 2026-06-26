@@ -2,8 +2,6 @@
 
 A Google Docs clone built with Next.js 15 and React 19.
 
-By [codewithantonio.com](https://codewithantonio.com)
-
 ## Prerequisites
 
 - Node.js (v18 or higher recommended)
@@ -15,7 +13,7 @@ By [codewithantonio.com](https://codewithantonio.com)
 
    Using npm:
    ```bash
-   npm install --legacy-peer-deps  # Required due to React 19 RC
+   npm install 
    ```
 
    Using bun:
@@ -49,11 +47,6 @@ By [codewithantonio.com](https://codewithantonio.com)
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-## Important Note About Dependencies
-
-This project uses React 19 (Release Candidate) with Next.js 15. Due to React 19 being in RC phase, some dependencies haven't been updated yet to officially support it. If you're using npm, you'll need to install dependencies with the `--legacy-peer-deps` flag. This has been tested and works correctly.
-
-Users of bun can install normally without any special flags.
 
 ## Deployment on Vercel
 
@@ -88,7 +81,7 @@ The following environment variables are required:
 ## Tech Stack
 
 - Next.js 15
-- React 19 (RC)
+- React 19
 - Convex
 - Clerk
 - Liveblocks
