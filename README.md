@@ -1,94 +1,154 @@
-# Google Docs Clone
+# CollabDocs — Local-First Collaborative Document Editor
 
-A Google Docs clone built with Next.js 15 and React 19.
+A production-grade, local-first collaborative document editor with offline synchronization, deterministic conflict resolution (CRDTs), granular version control, and AI-powered writing assistance.
 
-By [codewithantonio.com](https://codewithantonio.com)
+## Architecture
 
-## Prerequisites
+```
+┌─────────────────────────────────────────────────────────┐
+│                    Next.js App (Frontend)                │
+│  ┌─────────────┐  ┌──────────────┐  ┌────────────────┐  │
+│  │  TipTap      │  │  Yjs CRDT    │  │  IndexedDB     │  │
+│  │  Rich Text   │◄─┤  Document    │──┤  (Local-First  │  │
+│  │  Editor      │  │  State       │  │   Persistence) │  │
+│  └─────────────┘  └──────┬───────┘  └────────────────┘  │
+│                          │ y-websocket                    │
+└──────────────────────────┼──────────────────────────────┘
+                           │ WebSocket (ws://)
+┌──────────────────────────┼──────────────────────────────┐
+│              Custom WebSocket Server                     │
+│  ┌───────────────┐  ┌────┴──────────┐  ┌─────────────┐  │
+│  │ Clerk JWT     │  │  Yjs Sync     │  │  Debounced   │  │
+│  │ Auth +        │──┤  Protocol     │──┤  PostgreSQL  │  │
+│  │ Role-Based    │  │  (y-protocols)│  │  Persistence │  │
+│  │ Authorization │  └───────────────┘  └──────┬──────┘  │
+│  └───────────────┘                            │          │
+└───────────────────────────────────────────────┼─────────┘
+                                                │
+┌───────────────────────────────────────────────┼─────────┐
+│                  PostgreSQL Database                     │
+│  ┌──────┐  ┌──────────┐  ┌─────────────┐  ┌──────────┐  │
+│  │Users │  │Documents │  │DocumentVer- │  │Document  │  │
+│  │      │  │(Yjs      │  │sions (Time  │  │Collabora-│  │
+│  │      │  │ Binary)  │  │ Travel)     │  │tors/RLS) │  │
+│  └──────┘  └──────────┘  └─────────────┘  └──────────┘  │
+└─────────────────────────────────────────────────────────┘
+```
 
-- Node.js (v18 or higher recommended)
-- npm or bun
+## Key Features
 
-## Getting Started
+### Local-First Architecture
+- **IndexedDB** as the primary source of truth via `y-indexeddb`
+- Zero network requests blocking the UI — open, edit, and close documents fully offline
+- Changes automatically sync when connectivity resumes
 
-1. Install dependencies:
+### Deterministic Conflict Resolution
+- **Yjs CRDTs** (Conflict-free Replicated Data Types) ensure deterministic merging
+- Multiple users can edit the same document simultaneously without conflicts
+- No data loss — operations are commutative and idempotent
 
-   Using npm:
-   ```bash
-   npm install --legacy-peer-deps  # Required due to React 19 RC
-   ```
+### Custom WebSocket Server
+- Built from scratch using `ws` + `y-protocols`
+- Implements the full Yjs sync protocol (sync step 1/2 + incremental updates)
+- Awareness protocol for real-time cursor positions and presence
+- Debounced PostgreSQL persistence (2s)
+- Graceful shutdown with final document persistence
 
-   Using bun:
-   ```bash
-   bun install
-   ```
+### Version History & Time Travel
+- Create named snapshots of document state
+- Browse timeline of past versions
+- Restore to any previous state (auto-saves current state before restoring)
+- Safe for active collaborators — creates new version, doesn't overwrite
 
-2. Set up your environment variables:
-   ```bash
-   cp .env.example .env.local
-   ```
-   Then fill in the required environment variables in `.env.local`
+### Granular Authorization
+- **Owner**: Full control — edit, share, delete, manage collaborators
+- **Editor**: Edit content, create versions
+- **Viewer**: Read-only access, can view but not modify
+- Enforced at both API and WebSocket levels
 
-3. Start the development servers:
+### AI Writing Assistant (Gemini)
+- Improve writing, fix grammar, summarize, expand, simplify
+- Translate to any language
+- Custom AI prompts
+- Streaming responses for real-time UX
 
-   You need to run both commands simultaneously in different terminal windows:
-
-   Terminal 1 - Next.js server:
-   ```bash
-   npm run dev
-   # or
-   bun dev
-   ```
-
-   Terminal 2 - Convex server:
-   ```bash
-   npx convex dev
-   # or
-   bunx convex dev
-   ```
-
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-## Important Note About Dependencies
-
-This project uses React 19 (Release Candidate) with Next.js 15. Due to React 19 being in RC phase, some dependencies haven't been updated yet to officially support it. If you're using npm, you'll need to install dependencies with the `--legacy-peer-deps` flag. This has been tested and works correctly.
-
-Users of bun can install normally without any special flags.
-
-## Deployment on Vercel
-
-To deploy on Vercel, use the following commands:
-
-1. Replace the build command:
-   ```bash
-   npx convex deploy --cmd 'npm run build'
-   # or
-   bunx convex deploy --cmd 'bun build'
-   ```
-
-2. Ensure the install command is set to:
-   ```bash
-   npm install --legacy-peer-deps
-   ```
-
-## Environment Variables
-
-The following environment variables are required:
-
-- `CONVEX_DEPLOYMENT` & `NEXT_PUBLIC_CONVEX_URL`: Automatically generated by running:
-  ```bash
-  npx convex dev
-  # or
-  bunx convex dev
-  ```
-- `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`: Clerk public key
-- `CLERK_SECRET_KEY`: Clerk secret key
-- `LIVEBLOCKS_SECRET_KEY`: Liveblocks secret key
+### Security
+- Clerk JWT verification on all connections
+- Payload size limits (5MB max) to prevent OOM attacks
+- Connection rate limiting (20 connections/minute/IP)
+- Zod validation on all API inputs
+- Role-based access enforcement at every layer
 
 ## Tech Stack
 
-- Next.js 15
-- React 19 (RC)
-- Convex
-- Clerk
-- Liveblocks
+| Layer | Technology |
+|-------|------------|
+| Frontend | Next.js 15, React 19, TypeScript |
+| Editor | TipTap with Yjs collaboration extensions |
+| CRDT Engine | Yjs (y-indexeddb, y-websocket, y-protocols) |
+| Real-time | Custom WebSocket server (ws + y-protocols) |
+| Database | PostgreSQL via Prisma ORM |
+| Auth | Clerk (JWT-based) |
+| AI | Google Gemini via Vercel AI SDK |
+| Styling | Tailwind CSS + shadcn/ui + Radix UI |
+| State | Zustand |
+
+## Getting Started
+
+### Prerequisites
+- Node.js 18+
+- PostgreSQL database (local or cloud — [Neon](https://neon.tech), [Supabase](https://supabase.com))
+
+### Setup
+
+1. Install dependencies:
+```bash
+npm install --legacy-peer-deps
+```
+
+2. Set up environment variables:
+```bash
+cp .env.example .env.local
+```
+Fill in: `DATABASE_URL`, Clerk keys, and optionally `GOOGLE_GENERATIVE_AI_API_KEY`.
+
+3. Push database schema:
+```bash
+npx prisma db push
+```
+
+4. Start development servers (Next.js + WebSocket):
+```bash
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000)
+
+## Security Considerations
+
+### OOM Prevention
+The WebSocket server enforces a **5MB max payload size** on all incoming messages. Oversized payloads are dropped with a warning log.
+
+### Tenant Isolation
+PostgreSQL queries are scoped by `ownerId` and `DocumentCollaborator` records. Users can only access documents they own or have been explicitly invited to.
+
+### Authentication
+All WebSocket connections require a valid Clerk JWT token passed as a URL parameter. Invalid or expired tokens result in immediate connection closure (code 4001).
+
+### Rate Limiting
+Connection attempts are limited to 20 per IP per minute to prevent connection flooding.
+
+## Deployment
+
+### Vercel (Frontend)
+```bash
+vercel deploy
+```
+
+### WebSocket Server (Railway/Render)
+Deploy the `server/` directory as a separate Node.js service.
+
+Set environment variables:
+- `DATABASE_URL` — same PostgreSQL database
+- `CLERK_SECRET_KEY` — for JWT verification
+- `WS_PORT` — port to listen on
