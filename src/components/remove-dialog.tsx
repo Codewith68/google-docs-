@@ -1,8 +1,8 @@
 "use client";
 
-import { toast } from "sonner";
 import { useState } from "react";
-import { useMutation } from "convex/react";
+import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 
 import {
   AlertDialog,
@@ -15,51 +15,47 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-
-import { api } from "../../convex/_generated/api";
-import { Id } from "../../convex/_generated/dataModel";
-import { useRouter } from "next/navigation";
+import { deleteDocument } from "@/lib/actions";
 
 interface RemoveDialogProps {
-  documentId: Id<"documents">;
+  documentId: string;
   children: React.ReactNode;
-};
+}
 
 export const RemoveDialog = ({ documentId, children }: RemoveDialogProps) => {
   const router = useRouter();
-  const remove = useMutation(api.documents.removeById);
-  const [isRemoving, setIsRemoving] = useState(false);
+  const [isPending, setIsPending] = useState(false);
+
+  const handleDelete = async () => {
+    setIsPending(true);
+    try {
+      await deleteDocument(documentId);
+      toast.success("Document deleted");
+      router.push("/");
+    } catch {
+      toast.error("Failed to delete document");
+    } finally {
+      setIsPending(false);
+    }
+  };
 
   return (
     <AlertDialog>
-      <AlertDialogTrigger asChild>
-        {children}
-      </AlertDialogTrigger>
+      <AlertDialogTrigger asChild>{children}</AlertDialogTrigger>
       <AlertDialogContent onClick={(e) => e.stopPropagation()}>
         <AlertDialogHeader>
-          <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+          <AlertDialogTitle>Delete document?</AlertDialogTitle>
           <AlertDialogDescription>
-            This action cannot be undone. This will permanently delete your
-            document.
+            This action cannot be undone. The document and all its version
+            history will be permanently deleted.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel onClick={(e) => e.stopPropagation()}>
-            Cancel
-          </AlertDialogCancel>
+          <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
           <AlertDialogAction
-            disabled={isRemoving}
-            onClick={(e) => {
-              e.stopPropagation();
-              setIsRemoving(true);
-              remove({ id: documentId })
-                .catch(() => toast.error("Something went wrong"))
-                .then(() => {
-                  toast.success("Document removed");
-                  router.push("/");
-                })
-                .finally(() => setIsRemoving(false));
-            }}
+            disabled={isPending}
+            onClick={handleDelete}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
           >
             Delete
           </AlertDialogAction>

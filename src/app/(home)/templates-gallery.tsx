@@ -1,11 +1,7 @@
 "use client";
 
-import { toast } from "sonner";
-import { useState } from "react";
-import { useMutation } from "convex/react";
 import { useRouter } from "next/navigation";
-
-import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 import {
   Carousel,
   CarouselContent,
@@ -13,26 +9,21 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from "@/components/ui/carousel";
-import { templates } from "@/constants/templates";
 
-import { api } from "../../../convex/_generated/api";
+import { createDocument } from "@/lib/actions";
+import { templates } from "@/constants/templates";
 
 export const TemplatesGallery = () => {
   const router = useRouter();
-  const create = useMutation(api.documents.create);
-  const [isCreating, setIsCreating] = useState(false);
 
-  const onTemplateClick = (title: string, initialContent: string) => {
-    setIsCreating(true);
-    create({ title, initialContent })
-      .catch(() => toast.error("Something went wrong"))
-      .then((documentId) => {
-        toast.success("Document created")
-        router.push(`/documents/${documentId}`);
-      })
-      .finally(() => {
-        setIsCreating(false);
-      });
+  const handleCreate = async (title: string, initialContent: string) => {
+    try {
+      const id = await createDocument({ title, initialContent });
+      toast.success("Document created");
+      router.push(`/documents/${id}`);
+    } catch {
+      toast.error("Failed to create document");
+    }
   };
 
   return (
@@ -47,22 +38,30 @@ export const TemplatesGallery = () => {
                 className="basis-1/2 sm:basis-1/3 md:basis-1/4 lg:basis-1/5 xl:basis-1/6 2xl:basis-[14.285714%] pl-4"
               >
                 <div
-                  className={cn(
-                    "aspect-[3/4] flex flex-col gap-y-2.5",
-                    isCreating && "pointer-events-none opacity-50"
-                  )}
+                  className={`aspect-[3/4] flex flex-col gap-y-2.5`}
                 >
                   <button
-                    disabled={isCreating}
-                    onClick={() => onTemplateClick(template.label, template.initialContent)}
+                    onClick={() =>
+                      handleCreate(
+                        template.label,
+                        template.initialContent
+                      )
+                    }
                     style={{
-                      backgroundImage: `url(${template.imageUrl})`,
+                      backgroundImage: template.imageUrl
+                        ? `url(${template.imageUrl})`
+                        : undefined,
                       backgroundSize: "cover",
                       backgroundPosition: "center",
-                      backgroundRepeat: "no-repeat",
                     }}
                     className="size-full hover:border-blue-500 rounded-sm border hover:bg-blue-50 transition flex flex-col items-center justify-center gap-y-4 bg-white"
-                  />
+                  >
+                    {!template.imageUrl && (
+                      <span className="text-sm text-muted-foreground">
+                        {template.label === "Blank Document" ? "+" : template.label}
+                      </span>
+                    )}
+                  </button>
                   <p className="text-sm font-medium truncate">
                     {template.label}
                   </p>

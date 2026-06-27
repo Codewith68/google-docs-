@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { type ColorResult, SketchPicker } from "react-color";
+import { AIAssistant } from "@/components/ai-assistant";
 import { type Level } from "@tiptap/extension-heading";
 import { 
   AlignCenterIcon,
@@ -19,7 +20,7 @@ import {
   ListOrderedIcon, 
   ListTodoIcon, 
   LucideIcon, 
-  MessageSquarePlusIcon, 
+  
   MinusIcon, 
   PlusIcon, 
   PrinterIcon, 
@@ -631,12 +632,6 @@ export const Toolbar = () => {
     ],
     [
       {
-        label: "Comment",
-        icon: MessageSquarePlusIcon,
-        onClick: () => editor?.chain().focus().addPendingComment().run(),
-        isActive: editor?.isActive("liveblocksCommentMark")
-      },
-      {
         label: "List Todo",
         icon: ListTodoIcon,
         onClick: () => editor?.chain().focus().toggleTaskList().run(),
@@ -676,6 +671,8 @@ export const Toolbar = () => {
       {sections[2].map((item) => (
         <ToolbarButton key={item.label} {...item} />
       ))}
+      <Separator orientation="vertical" className="h-6 bg-neutral-300" />
+      <AIAssistant />
     </div>
   );
 };

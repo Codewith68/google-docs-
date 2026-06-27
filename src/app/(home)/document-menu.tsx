@@ -1,32 +1,46 @@
-import { ExternalLinkIcon, FilePenIcon, MoreVertical, TrashIcon } from "lucide-react";
+"use client";
 
-import { Button } from "@/components/ui/button";
-import { RemoveDialog } from "@/components/remove-dialog";
-import { RenameDialog } from "@/components/rename-dialog";
+import {
+  ExternalLinkIcon,
+  FilePenIcon,
+  MoreVerticalIcon,
+  TrashIcon,
+} from "lucide-react";
+
 import {
   DropdownMenu,
-  DropdownMenuItem,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-
-import { Id } from "../../../convex/_generated/dataModel";
+import { Button } from "@/components/ui/button";
+import { RenameDialog } from "@/components/rename-dialog";
+import { RemoveDialog } from "@/components/remove-dialog";
 
 interface DocumentMenuProps {
-  documentId: Id<"documents">;
+  documentId: string;
   title: string;
-  onNewTab: (id: Id<"documents">) => void;
-};
+  ownerId: string;
+}
 
-export const DocumentMenu = ({ documentId, title, onNewTab }: DocumentMenuProps) => {
+export const DocumentMenu = ({
+  documentId,
+  title,
+}: DocumentMenuProps) => {
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" className="rounded-full">
-          <MoreVertical className="size-4" />
+        <Button
+          variant="ghost"
+          size="icon"
+          className="size-8 rounded-full"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <MoreVerticalIcon className="size-4" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent>
+      <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
         <RenameDialog documentId={documentId} initialTitle={title}>
           <DropdownMenuItem
             onSelect={(e) => e.preventDefault()}
@@ -46,12 +60,12 @@ export const DocumentMenu = ({ documentId, title, onNewTab }: DocumentMenuProps)
           </DropdownMenuItem>
         </RemoveDialog>
         <DropdownMenuItem
-          onClick={() => onNewTab(documentId)}
+          onClick={() => window.open(`/documents/${documentId}`, "_blank")}
         >
           <ExternalLinkIcon className="size-4 mr-2" />
-          Open in a new tab
+          Open in new tab
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
-  )
-}
+  );
+};

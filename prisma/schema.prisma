@@ -1,0 +1,78 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// Roles for document collaboration access control
+enum Role {
+  OWNER
+  EDITOR
+  VIEWER
+}
+
+/// Users synced from Clerk via webhook
+model User {
+  id        String   @id /// Clerk user ID (e.g., user_xxx)
+  email     String   @unique
+  name      String
+  avatar    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  ownedDocuments Document[]             @relation("DocumentOwner")
+  collaborations DocumentCollaborator[]
+  versions       DocumentVersion[]
+}
+
+/// Documents with Yjs CRDT state stored as binary
+model Document {
+  id             String   @id @default(cuid())
+  title          String   @default("Untitled Document")
+  content        Bytes?   /// Serialized Yjs document state (binary CRDT)
+  initialContent String?  /// HTML content for first-time initialization
+  ownerId        String
+  organizationId String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  owner         User                  @relation("DocumentOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  collaborators DocumentCollaborator[]
+  versions      DocumentVersion[]
+
+  @@index([ownerId])
+  @@index([organizationId])
+}
+
+/// Named snapshots of document state for version history / time travel
+model DocumentVersion {
+  id         String   @id @default(cuid())
+  documentId String
+  name       String   @default("Untitled Snapshot")
+  content    Bytes    /// Serialized Yjs state snapshot
+  createdBy  String
+  createdAt  DateTime @default(now())
+
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  author   User     @relation(fields: [createdBy], references: [id])
+
+  @@index([documentId, createdAt(sort: Desc)])
+}
+
+/// Access control: who can access a document and with what role
+model DocumentCollaborator {
+  id         String   @id @default(cuid())
+  documentId String
+  userId     String
+  role       Role     @default(EDITOR)
+  createdAt  DateTime @default(now())
+
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([documentId, userId])
+  @@index([userId])
+}

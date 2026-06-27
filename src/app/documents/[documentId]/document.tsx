@@ -1,31 +1,53 @@
 "use client";
 
-import { Preloaded, usePreloadedQuery } from "convex/react";
-
-import { Room } from "./room";
 import { Editor } from "./editor";
 import { Navbar } from "./navbar";
 import { Toolbar } from "./toolbar";
-import { api } from "../../../../convex/_generated/api";
+
+export interface DocumentData {
+  id: string;
+  title: string;
+  initialContent: string | null;
+  ownerId: string;
+  organizationId: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+  owner: { id: string; name: string; avatar: string | null };
+  collaborators: {
+    id: string;
+    role: string;
+    user: { id: string; name: string; email: string; avatar: string | null };
+  }[];
+}
 
 interface DocumentProps {
-  preloadedDocument: Preloaded<typeof api.documents.getById>;
-};
+  document: DocumentData;
+  userName: string;
+  userColor: string;
+  role: "OWNER" | "EDITOR" | "VIEWER";
+}
 
-export const Document = ({ preloadedDocument }: DocumentProps) => {
-  const document = usePreloadedQuery(preloadedDocument);
-
+export const Document = ({
+  document,
+  userName,
+  userColor,
+  role,
+}: DocumentProps) => {
   return (
-    <Room>
-      <div className="min-h-screen bg-[#FAFBFD]">
-        <div className="flex flex-col px-4 pt-2 gap-y-2 fixed top-0 left-0 right-0 z-10 bg-[#FAFBFD] print:hidden">
-          <Navbar data={document} />
-          <Toolbar />
-        </div>
-        <div className="pt-[114px] print:pt-0">
-          <Editor initialContent={document.initialContent} />
-        </div>
+    <div className="min-h-screen bg-[#FAFBFD]">
+      <div className="flex flex-col px-4 pt-2 gap-y-2 fixed top-0 left-0 right-0 z-10 bg-[#FAFBFD] print:hidden">
+        <Navbar data={document} role={role} />
+        {role !== "VIEWER" && <Toolbar />}
       </div>
-    </Room>
-   );
+      <div className={`${role !== "VIEWER" ? "pt-[114px]" : "pt-[60px]"} print:pt-0`}>
+        <Editor
+          documentId={document.id}
+          initialContent={document.initialContent}
+          userName={userName}
+          userColor={userColor}
+          role={role}
+        />
+      </div>
+    </div>
+  );
 };
