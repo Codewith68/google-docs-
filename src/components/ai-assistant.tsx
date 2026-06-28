@@ -149,6 +149,13 @@ export function AIAssistant() {
             } catch {
               // Ignore parse errors for non-text chunks
             }
+          } else if (line.startsWith("3:")) {
+            try {
+              const errorMessage = JSON.parse(line.slice(2));
+              throw new Error(typeof errorMessage === 'string' ? errorMessage : JSON.stringify(errorMessage));
+            } catch (e: any) {
+              throw new Error(e.message || "AI Error");
+            }
           }
         }
       }
@@ -159,8 +166,8 @@ export function AIAssistant() {
           // Replace selected text
           editor.chain().focus().deleteSelection().insertContent(fullText).run();
         } else {
-          // Append to the end of document
-          editor.chain().focus().insertContent(`\n\n${fullText}`).run();
+          // Replace the entire document
+          editor.chain().focus().clearContent().insertContent(fullText).run();
         }
         toast.success("AI suggestion applied");
       }

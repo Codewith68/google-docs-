@@ -7,7 +7,7 @@ export function Footer() {
       <div className="max-w-screen-xl mx-auto px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-2 text-sm text-muted-foreground">
         <div className="flex items-center gap-1">
           <span>Built by</span>
-          <span className="font-semibold text-foreground">Subra</span>
+          <span className="font-semibold text-foreground">Subrat</span>
           <span>•</span>
           <span>House of Edtech Assignment</span>
         </div>
@@ -22,7 +22,7 @@ export function Footer() {
             GitHub
           </Link>
           <Link
-            href="https://linkedin.com/in/subra"
+            href="https://www.linkedin.com/in/subratpalei/"
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-1.5 hover:text-foreground transition-colors"

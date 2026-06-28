@@ -7,22 +7,15 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-/// Roles for document collaboration access control
-enum Role {
-  OWNER
-  EDITOR
-  VIEWER
-}
-
 /// Users synced from Clerk via webhook
 model User {
-  id        String   @id /// Clerk user ID (e.g., user_xxx)
-  email     String   @unique
-  name      String
-  avatar    String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
+  /// Clerk user ID (e.g., user_xxx)
+  id             String                 @id
+  email          String                 @unique
+  name           String
+  avatar         String?
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
   ownedDocuments Document[]             @relation("DocumentOwner")
   collaborations DocumentCollaborator[]
   versions       DocumentVersion[]
@@ -30,18 +23,19 @@ model User {
 
 /// Documents with Yjs CRDT state stored as binary
 model Document {
-  id             String   @id @default(cuid())
-  title          String   @default("Untitled Document")
-  content        Bytes?   /// Serialized Yjs document state (binary CRDT)
-  initialContent String?  /// HTML content for first-time initialization
+  id             String                 @id @default(cuid())
+  title          String                 @default("Untitled Document")
+  /// Serialized Yjs document state (binary CRDT)
+  content        Bytes?
+  /// HTML content for first-time initialization
+  initialContent String?
   ownerId        String
   organizationId String?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-
-  owner         User                  @relation("DocumentOwner", fields: [ownerId], references: [id], onDelete: Cascade)
-  collaborators DocumentCollaborator[]
-  versions      DocumentVersion[]
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+  owner          User                   @relation("DocumentOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  collaborators  DocumentCollaborator[]
+  versions       DocumentVersion[]
 
   @@index([ownerId])
   @@index([organizationId])
@@ -52,12 +46,12 @@ model DocumentVersion {
   id         String   @id @default(cuid())
   documentId String
   name       String   @default("Untitled Snapshot")
-  content    Bytes    /// Serialized Yjs state snapshot
+  /// Serialized Yjs state snapshot
+  content    Bytes
   createdBy  String
   createdAt  DateTime @default(now())
-
-  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
-  author   User     @relation(fields: [createdBy], references: [id])
+  author     User     @relation(fields: [createdBy], references: [id])
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
 
   @@index([documentId, createdAt(sort: Desc)])
 }
@@ -69,10 +63,16 @@ model DocumentCollaborator {
   userId     String
   role       Role     @default(EDITOR)
   createdAt  DateTime @default(now())
-
-  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
-  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([documentId, userId])
   @@index([userId])
+}
+
+/// Roles for document collaboration access control
+enum Role {
+  OWNER
+  EDITOR
+  VIEWER
 }

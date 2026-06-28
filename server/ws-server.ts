@@ -86,12 +86,12 @@ async function getOrCreateDoc(docName: string): Promise<SharedDoc> {
 
     if (document?.content) {
       Y.applyUpdate(doc, new Uint8Array(document.content));
-      console.log(`📄 Loaded document "${docName}" from database`);
+      console.log(`Loaded document "${docName}" from database`);
     } else {
-      console.log(`📄 Created new document "${docName}" (no persisted state)`);
+      console.log(`Created new document "${docName}" (no persisted state)`);
     }
   } catch (err) {
-    console.error(`❌ Failed to load document "${docName}":`, err);
+    console.error(`Failed to load document "${docName}":`, err);
   }
 
   const sharedDoc: SharedDoc = {
@@ -132,11 +132,11 @@ function schedulePersist(sharedDoc: SharedDoc) {
         },
       });
       console.log(
-        `💾 Persisted document "${sharedDoc.name}" (${state.byteLength} bytes)`
+        `Persisted document "${sharedDoc.name}" (${state.byteLength} bytes)`
       );
     } catch (err) {
       console.error(
-        `❌ Failed to persist document "${sharedDoc.name}":`,
+        `Failed to persist document "${sharedDoc.name}":`,
         err
       );
     }
@@ -209,7 +209,7 @@ function handleMessage(
         // If this is a sync update from a VIEWER, reject it
         if (syncMessageType === 2 && meta.role === "VIEWER") {
           console.warn(
-            `⚠️ VIEWER ${meta.userId} attempted to push an update — blocked`
+            ` VIEWER ${meta.userId} attempted to push an update — blocked`
           );
           return;
         }
@@ -255,7 +255,7 @@ function closeConn(sharedDoc: SharedDoc, conn: WebSocket): void {
   );
 
   console.log(
-    `👋 User "${meta.userName}" disconnected from "${sharedDoc.name}" (${sharedDoc.conns.size} remaining)`
+    ` User "${meta.userName}" disconnected from "${sharedDoc.name}" (${sharedDoc.conns.size} remaining)`
   );
 
   // If no more connections, schedule cleanup
@@ -269,15 +269,15 @@ function closeConn(sharedDoc: SharedDoc, conn: WebSocket): void {
             where: { id: sharedDoc.name },
             data: { content: Buffer.from(state) },
           });
-          console.log(`💾 Final persist for "${sharedDoc.name}"`);
+          console.log(`Final persist for "${sharedDoc.name}"`);
         } catch (err) {
-          console.error(`❌ Final persist failed for "${sharedDoc.name}":`, err);
+          console.error(`Final persist failed for "${sharedDoc.name}":`, err);
         }
 
         // Cleanup
         sharedDoc.doc.destroy();
         docs.delete(sharedDoc.name);
-        console.log(`🗑️ Cleaned up document "${sharedDoc.name}"`);
+        console.log(` Cleaned up document "${sharedDoc.name}"`);
       }
     }, CLEANUP_DELAY_MS);
   }
@@ -365,7 +365,7 @@ async function setupConnection(
     // Payload size check (OOM protection)
     if (message.byteLength > MAX_PAYLOAD_SIZE) {
       console.warn(
-        `⚠️ Oversized message from ${userId}: ${message.byteLength} bytes — dropped`
+        ` Oversized message from ${userId}: ${message.byteLength} bytes — dropped`
       );
       return;
     }
@@ -410,7 +410,7 @@ async function setupConnection(
   }
 
   console.log(
-    `✅ User "${userName}" (${role}) connected to "${docName}" (${sharedDoc.conns.size} users)`
+    ` User "${userName}" (${role}) connected to "${docName}" (${sharedDoc.conns.size} users)`
   );
 }
 
@@ -523,7 +523,7 @@ wss.on("connection", async (ws, req) => {
 
   if (!checkRateLimit(ip)) {
     ws.close(4029, "Too many connections");
-    console.warn(`⚠️ Rate limited IP: ${ip}`);
+    console.warn(`Rate limited IP: ${ip}`);
     return;
   }
 
@@ -567,7 +567,7 @@ wss.on("connection", async (ws, req) => {
 server.listen(PORT, () => {
   console.log(`
 ╔══════════════════════════════════════════════════════╗
-║   🚀 Yjs Collaboration WebSocket Server             ║
+║   Yjs Collaboration WebSocket Server                ║
 ║   Running on ws://localhost:${PORT}                    ║
 ║                                                      ║
 ║   Features:                                          ║
@@ -583,7 +583,7 @@ server.listen(PORT, () => {
 // ─── Graceful Shutdown ───────────────────────────────────────────────
 
 async function shutdown() {
-  console.log("\n🛑 Shutting down WebSocket server...");
+  console.log("\nShutting down WebSocket server...");
 
   // Persist all documents
   for (const [name, sharedDoc] of docs) {
@@ -593,9 +593,9 @@ async function shutdown() {
         where: { id: name },
         data: { content: Buffer.from(state) },
       });
-      console.log(`💾 Persisted "${name}" on shutdown`);
+      console.log(`Persisted "${name}" on shutdown`);
     } catch (err) {
-      console.error(`❌ Failed to persist "${name}" on shutdown:`, err);
+      console.error(`Failed to persist "${name}" on shutdown:`, err);
     }
     sharedDoc.doc.destroy();
   }

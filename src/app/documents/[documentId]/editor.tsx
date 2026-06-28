@@ -44,28 +44,71 @@ interface EditorProps {
   role: "OWNER" | "EDITOR" | "VIEWER";
 }
 
-export const Editor = ({
+export const Editor = (props: EditorProps) => {
+  const { getToken } = useAuth();
+  const [token, setToken] = useState<string | null>(null);
+  const [provider, setProvider] = useState<WebsocketProvider | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    getToken().then((t) => {
+      if (mounted && t) setToken(t);
+    });
+    return () => {
+      mounted = false;
+    };
+  }, [getToken]);
+
+  useEffect(() => {
+    if (!token) return;
+    
+    const ydoc = new Y.Doc();
+    const wsUrl = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:1234";
+    const wsProvider = new WebsocketProvider(wsUrl, props.documentId, ydoc, {
+      params: { token, room: props.documentId },
+      connect: true,
+    });
+    
+    wsProvider.awareness.setLocalStateField("user", {
+      name: props.userName,
+      color: props.userColor,
+    });
+    
+    setProvider(wsProvider);
+
+    return () => {
+      wsProvider.awareness.setLocalState(null);
+      wsProvider.destroy();
+    };
+  }, [token, props.documentId, props.userName, props.userColor]);
+
+  if (!token || !provider) {
+    return (
+      <div className="flex size-full items-center justify-center bg-[#F9FBFD]">
+        <p className="text-sm text-muted-foreground">Loading editor...</p>
+      </div>
+    );
+  }
+
+  return <EditorInner {...props} token={token} provider={provider} ydoc={provider.doc} />;
+};
+
+const EditorInner = ({
   documentId,
   initialContent,
   userName,
   userColor,
   role,
-}: EditorProps) => {
+  token,
+  provider,
+  ydoc,
+}: EditorProps & { token: string; provider: WebsocketProvider; ydoc: Y.Doc }) => {
   const { getToken } = useAuth();
   const { setEditor } = useEditorStore();
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>("connecting");
   const [leftMargin] = useState(LEFT_MARGIN_DEFAULT);
   const [rightMargin] = useState(RIGHT_MARGIN_DEFAULT);
-  const ydocRef = useRef<Y.Doc | null>(null);
-  const wsProviderRef = useRef<WebsocketProvider | null>(null);
   const idbProviderRef = useRef<IndexeddbPersistence | null>(null);
-
-  // Create Yjs document (stable reference)
-  const ydoc = useMemo(() => {
-    const doc = new Y.Doc();
-    ydocRef.current = doc;
-    return doc;
-  }, []);
 
   // Set up IndexedDB persistence (local-first)
   useEffect(() => {
@@ -73,7 +116,7 @@ export const Editor = ({
     idbProviderRef.current = idb;
 
     idb.on("synced", () => {
-      console.log("📦 Local IndexedDB synced");
+      console.log("Local IndexedDB synced");
     });
 
     return () => {
@@ -81,64 +124,40 @@ export const Editor = ({
     };
   }, [documentId, ydoc]);
 
-  // Set up WebSocket provider for real-time collaboration
+  // Set up WebSocket provider event listeners
   useEffect(() => {
-    let provider: WebsocketProvider | null = null;
     let mounted = true;
-
-    const connectWs = async () => {
-      const token = await getToken();
-      if (!token || !mounted) return;
-
-      const wsUrl = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:1234";
-
-      provider = new WebsocketProvider(wsUrl, documentId, ydoc, {
-        params: { token, room: documentId },
-        connect: true,
-      });
-
-      wsProviderRef.current = provider;
-
-      // Set user awareness info
-      provider.awareness.setLocalStateField("user", {
-        name: userName,
-        color: userColor,
-      });
-
-      // Track connection status
-      provider.on("status", ({ status }: { status: string }) => {
-        if (!mounted) return;
-        switch (status) {
-          case "connected":
-            setConnectionStatus("connected");
-            break;
-          case "connecting":
-            setConnectionStatus("connecting");
-            break;
-          case "disconnected":
-            setConnectionStatus("disconnected");
-            break;
+    const handleStatus = async ({ status }: { status: string }) => {
+      if (!mounted) return;
+      if (status === "connected") setConnectionStatus("connected");
+      else if (status === "connecting") setConnectionStatus("connecting");
+      else if (status === "disconnected") {
+        setConnectionStatus("disconnected");
+        // Fetch a fresh token for the next reconnect attempt
+        const newToken = await getToken();
+        if (newToken && mounted) {
+          const wsUrl = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:1234";
+          const url = new URL(wsUrl);
+          url.searchParams.set("token", newToken);
+          url.searchParams.set("room", documentId);
+          (provider as any).url = url.toString();
         }
-      });
-
-      provider.on("sync", (isSynced: boolean) => {
-        if (!mounted) return;
-        if (isSynced) {
-          setConnectionStatus("connected");
-        } else {
-          setConnectionStatus("syncing");
-        }
-      });
+      }
     };
 
-    connectWs();
+    const handleSync = (isSynced: boolean) => {
+      if (isSynced) setConnectionStatus("connected");
+      else setConnectionStatus("syncing");
+    };
+
+    provider.on("status", handleStatus);
+    provider.on("sync", handleSync);
 
     // Handle browser online/offline
     const handleOffline = () => setConnectionStatus("disconnected");
     const handleOnline = () => {
       setConnectionStatus("connecting");
-      // Reconnect WebSocket
-      if (provider && !provider.wsconnected) {
+      if (!provider.wsconnected) {
         provider.connect();
       }
     };
@@ -148,14 +167,12 @@ export const Editor = ({
 
     return () => {
       mounted = false;
+      provider.off("status", handleStatus);
+      provider.off("sync", handleSync);
       window.removeEventListener("offline", handleOffline);
       window.removeEventListener("online", handleOnline);
-      if (provider) {
-        provider.awareness.setLocalState(null);
-        provider.destroy();
-      }
     };
-  }, [documentId, ydoc, getToken, userName, userColor]);
+  }, [provider]);
 
   // Initialize editor with initial content if this is a new document
   const handleCreate = useCallback(
@@ -215,7 +232,7 @@ export const Editor = ({
       }),
       // Collaborative Cursors — shows other users' selections in real-time
       CollaborationCursor.configure({
-        provider: wsProviderRef.current,
+        provider,
         user: { name: userName, color: userColor },
       }),
       LineHeightExtension,
@@ -244,12 +261,6 @@ export const Editor = ({
     ],
   });
 
-  // Update collaboration cursor provider when it becomes available
-  useEffect(() => {
-    if (editor && wsProviderRef.current) {
-      // The provider is already configured, awareness is set
-    }
-  }, [editor]);
 
   return (
     <div className="size-full overflow-x-auto bg-[#F9FBFD] px-4 print:p-0 print:bg-white print:overflow-visible">
@@ -263,7 +274,7 @@ export const Editor = ({
       </div>
       {role === "VIEWER" && (
         <div className="fixed bottom-4 left-1/2 -translate-x-1/2 bg-amber-100 text-amber-800 px-4 py-2 rounded-full text-sm font-medium border border-amber-300 shadow-lg print:hidden">
-          👁️ You have view-only access to this document
+          You have view-only access to this document
         </div>
       )}
     </div>
