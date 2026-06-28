@@ -1,8 +1,13 @@
 # CollabDocs — Local-First Collaborative Document Editor
 
-A production-grade, local-first collaborative document editor with offline synchronization, deterministic conflict resolution (CRDTs), granular version control, and AI-powered writing assistance.
+> **Note to the Interviewer**
+> Welcome! This repository is my submission for the **House of Edtech — Fullstack Developer Assignment**. As requested, this is *not* a basic CRUD application. Instead, it demonstrates solutions to complex distributed systems problems:
+> - **Browser-based Memory Management**: Implemented debounced persistence and a 5MB payload size limit on the WebSocket server to prevent OOM errors and client-side lag during rapid typing.
+> - **State Synchronization Race Conditions**: Resolved using Yjs CRDTs (Conflict-free Replicated Data Types) ensuring deterministic conflict resolution. Operations are commutative and idempotent, meaning no matter what order updates arrive, the final document state is identical and safe.
+> - **Local-First & Offline Sync**: Built with `y-indexeddb` as the primary source of truth. Users can create, open, and edit documents fully offline with zero blocking network requests. The background sync engine safely merges them when network connectivity is restored via the custom WebSocket server.
+> - **Granular Authorization**: `OWNER`, `EDITOR`, and `VIEWER` roles are strictly enforced at the database layer and protocol layer (viewers are actively blocked from pushing sync updates to the server).
 
-Built for the **House of Edtech — Fullstack Developer Assignment 2** (v2.1).
+A production-grade, local-first collaborative document editor with offline synchronization, deterministic conflict resolution, granular version control, and AI-powered writing assistance.
 
 ## Architecture
 
