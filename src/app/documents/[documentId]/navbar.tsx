@@ -275,7 +275,7 @@ export const Navbar = ({ data, role }: NavbarProps) => {
           afterSelectOrganizationUrl="/"
           afterSelectPersonalUrl="/"
         />
-        <UserButton />
+        <UserButton afterSignOutUrl="/sign-in" />
       </div>
     </nav>
   );

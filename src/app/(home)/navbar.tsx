@@ -76,7 +76,7 @@ export const Navbar = () => {
           afterSelectOrganizationUrl="/"
           afterSelectPersonalUrl="/"
         />
-        <UserButton />
+        <UserButton afterSignOutUrl="/sign-in" />
       </div>
     </nav>
   );

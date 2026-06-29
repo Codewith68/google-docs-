@@ -38,7 +38,7 @@ export default function RootLayout({
           <NuqsAdapter>
             <Toaster />
             <div className="min-h-screen flex flex-col">
-              <div className="flex-1">{children}</div>
+              <div className="flex-1 flex flex-col">{children}</div>
               <Footer />
             </div>
           </NuqsAdapter>
